@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Digital Asset Registry</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/web3/1.7.4/web3.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+</head>
+<body class="bg-gray-100 font-sans">
+    <div class="container mx-auto px-4 py-8">
+        <header class="mb-8">
+            <h1 class="text-3xl font-bold text-center text-blue-600">Digital Asset Registry</h1>
+            <p class="text-center text-gray-600 mt-2">Secure your digital assets on the Ethereum blockchain</p>
+        </header>
+
+        <!-- Connection Status -->
+        <div class="bg-white rounded-lg shadow p-4 mb-6">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h2 class="text-lg font-semibold">Blockchain Connection</h2>
+                    <p id="connectionStatus" class="text-red-500">Not connected to Ethereum</p>
+                    <p id="accountAddress" class="text-sm text-gray-600 hidden">Account: </p>
+                </div>
+                <button id="connectWallet" class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded">
+                    Connect Wallet
+                </button>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="mb-6">
+            <div class="flex border-b">
+                <button id="registerTab" class="px-4 py-2 text-blue-500 font-medium border-b-2 border-blue-500">Register Asset</button>
+                <button id="manageTab" class="px-4 py-2 text-gray-500 font-medium">Manage Assets</button>
+                <button id="verifyTab" class="px-4 py-2 text-gray-500 font-medium">Verify Asset</button>
+            </div>
+        </div>
+
+        <!-- Register Asset Section -->
+        <div id="registerSection" class="bg-white rounded-lg shadow p-6 mb-6">
+            <h2 class="text-xl font-semibold mb-4">Register New Digital Asset</h2>
+            <form id="registerForm">
+                <div class="mb-4">
+                    <label for="assetName" class="block text-gray-700 font-medium mb-2">Asset Name</label>
+                    <input type="text" id="assetName" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500" required>
+                </div>
+                <div class="mb-4">
+                    <label for="assetDescription" class="block text-gray-700 font-medium mb-2">Asset Description</label>
+                    <textarea id="assetDescription" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"></textarea>
+                </div>
+                <div class="mb-4">
+                    <label for="assetFile" class="block text-gray-700 font-medium mb-2">Asset File</label>
+                    <input type="file" id="assetFile" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500" required>
+                    <p class="text-sm text-gray-500 mt-1">We will calculate a cryptographic hash of this file to register on the blockchain.</p>
+                </div>
+                <div id="fileHash" class="mb-4 p-3 bg-gray-100 rounded-md hidden">
+                    <p class="font-medium">File Hash:</p>
+                    <p id="hashValue" class="text-sm break-all"></p>
+                </div>
+                <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded w-full">
+                    Register Asset
+                </button>
+            </form>
+            <div id="registrationStatus" class="mt-4 p-3 rounded-md hidden"></div>
+        </div>
+
+        <!-- Manage Assets Section -->
+        <div id="manageSection" class="bg-white rounded-lg shadow p-6 mb-6 hidden">
+            <h2 class="text-xl font-semibold mb-4">Manage Your Digital Assets</h2>
+            <div id="assetList" class="space-y-4">
+                <p class="text-gray-500">Connect your wallet to view your assets</p>
+            </div>
+            
+            <!-- Transfer Asset Modal -->
+            <div id="transferModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
+                <div class="bg-white rounded-lg p-6 max-w-md w-full">
+                    <h3 class="text-lg font-semibold mb-4">Transfer Asset</h3>
+                    <form id="transferForm">
+                        <input type="hidden" id="transferAssetId">
+                        <div class="mb-4">
+                            <label for="newOwnerAddress" class="block text-gray-700 font-medium mb-2">New Owner Address</label>
+                            <input type="text" id="newOwnerAddress" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
+                        </div>
+                        <div class="flex justify-end space-x-3">
+                            <button type="button" id="cancelTransfer" class="px-4 py-2 border border-gray-300 rounded-md">Cancel</button>
+                            <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded">Transfer</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Verify Asset Section -->
+        <div id="verifySection" class="bg-white rounded-lg shadow p-6 mb-6 hidden">
+            <h2 class="text-xl font-semibold mb-4">Verify Asset Integrity</h2>
+            <form id="verifyForm">
+                <div class="mb-4">
+                    <label for="verifyAssetId" class="block text-gray-700 font-medium mb-2">Asset ID</label>
+                    <input type="number" id="verifyAssetId" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500" required>
+                </div>
+                <div class="mb-4">
+                    <label for="verifyFile" class="block text-gray-700 font-medium mb-2">Asset File to Verify</label>
+                    <input type="file" id="verifyFile" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500" required>
+                </div>
+                <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded w-full">
+                    Verify Integrity
+                </button>
+            </form>
+            <div id="verificationResult" class="mt-4 p-3 rounded-md hidden"></div>
+        </div>
+    </div>
+
+    <script>
+        // Contract ABI (This needs to be replaced with your actual contract ABI after compilation)
+        const contractABI = [
+            // This will be populated with the actual ABI from your compiled contract
+            // For demonstration purposes, we're using placeholder methods
+        ];
+        
+        // Contract address (This needs to be replaced with your deployed contract address)
+        const contractAddress = '0x0000000000000000000000000000000000000000';
+        
+        let web3;
+        let contract;
+        let userAccount;
+        
+        // DOM Elements
+        const connectWalletBtn = document.getElementById('connectWallet');
+        const connectionStatus = document.getElementById('connectionStatus');
+        const accountAddress = document.getElementById('accountAddress');
+        
+        const registerTab = document.getElementById('registerTab');
+        const manageTab = document.getElementById('manageTab');
+        const verifyTab = document.getElementById('verifyTab');
+        
+        const registerSection = document.getElementById('registerSection');
+        const manageSection = document.getElementById('manageSection');
+        const verifySection = document.getElementById('verifySection');
+        
+        const registerForm = document.getElementById('registerForm');
+        const assetFile = document.getElementById('assetFile');
+        const fileHash = document.getElementById('fileHash');
+        const hashValue = document.getElementById('hashValue');
+        const registrationStatus = document.getElementById('registrationStatus');
+        
+        const assetList = document.getElementById('assetList');
+        const transferModal = document.getElementById('transferModal');
+        const transferForm = document.getElementById('transferForm');
+        const transferAssetId = document.getElementById('transferAssetId');
+        const newOwnerAddress = document.getElementById('newOwnerAddress');
+        const cancelTransfer = document.getElementById('cancelTransfer');
+        
+        const verifyForm = document.getElementById('verifyForm');
+        const verifyAssetId = document.getElementById('verifyAssetId');
+        const verifyFile = document.getElementById('verifyFile');
+        const verificationResult = document.getElementById('verificationResult');
+        
+        // Connect to MetaMask
+        async function connectWallet() {
+            if (window.ethereum) {
+                try {
+                    web3 = new Web3(window.ethereum);
+                    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                    userAccount = accounts[0];
+                    
+                    // Update UI
+                    connectionStatus.textContent = 'Connected to Ethereum';
+                    connectionStatus.classList.remove('text-red-500');
+                    connectionStatus.classList.add('text-green-500');
+                    accountAddress.textContent = `Account: ${userAccount}`;
+                    accountAddress.classList.remove('hidden');
+                    
+                    // Initialize contract
+                    contract = new web3.eth.Contract(contractABI, contractAddress);
+                    
+                    // Load user's assets if on manage tab
+                    if (!manageSection.classList.contains('hidden')) {
+                        loadUserAssets();
+                    }
+                    
+                } catch (error) {
+                    console.error('User denied account access', error);
+                }
+            } else {
+                connectionStatus.textContent = 'Please install MetaMask!';
+            }
+        }
+        
+        // Calculate file hash
+        function calculateFileHash(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsArrayBuffer(file);
+                reader.onload = function() {
+                    const wordArray = CryptoJS.lib.WordArray.create(reader.result);
+                    const hash = CryptoJS.SHA256(wordArray).toString();
+                    resolve(hash);
+                };
+                reader.onerror = function() {
+                    reject('Error reading file');
+                };
+            });
+        }
+        
+        // Register a new asset
+        async function registerAsset(event) {
+            event.preventDefault();
+            
+            if (!userAccount) {
+                alert('Please connect your wallet first');
+                return;
+            }
+            
+            const name = document.getElementById('assetName').value;
+            const description = document.getElementById('assetDescription').value;
+            const hash = hashValue.textContent;
+            
+            try {
+                // Call the smart contract function
+                const result = await contract.methods.registerAsset(name, description, hash)
+                    .send({ from: userAccount });
+                
+                // Show success message
+                registrationStatus.textContent = `Asset registered successfully! Asset ID: ${result.events.AssetRegistered.returnValues.assetId}`;
+                registrationStatus.classList.remove('hidden', 'bg-red-100', 'text-red-700');
+                registrationStatus.classList.add('bg-green-100', 'text-green-700');
+                
+                // Reset form
+                registerForm.reset();
+                fileHash.classList.add('hidden');
+                
+            } catch (error) {
+                console.error('Error registering asset:', error);
+                registrationStatus.textContent = 'Error registering asset: ' + error.message;
+                registrationStatus.classList.remove('hidden', 'bg-green-100', 'text-green-700');
+                registrationStatus.classList.add('bg-red-100', 'text-red-700');
+            }
+        }
+        
+        // Load user's assets
+        async function loadUserAssets() {
+            if (!userAccount || !contract) {
+                assetList.innerHTML = '<p class="text-gray-500">Connect your wallet to view your assets</p>';
+                return;
+            }
+            
+            try {
+                // Get asset IDs owned by the user
+                const assetIds = await contract.methods.getAssetsByOwner(userAccount).call();
+                
+                if (assetIds.length === 0) {
+                    assetList.innerHTML = '<p class="text-gray-500">You have no registered assets</p>';
+                    return;
+                }
+                
+                // Clear the list
+                assetList.innerHTML = '';
+                
+                // Load each asset's details
+                for (const assetId of assetIds) {
+                    const asset = await contract.methods.getAsset(assetId).call();
+                    
+                    const assetElement = document.createElement('div');
+                    assetElement.className = 'border border-gray-200 rounded-md p-4';
+                    assetElement.innerHTML = `
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <h3 class="font-semibold">${asset.name}</h3>
+                                <p class="text-sm text-gray-600">${asset.description}</p>
+                                <p class="text-xs text-gray-500 mt-1">ID: ${assetId}</p>
+                                <p class="text-xs text-gray-500">Registered: ${new Date(asset.registeredAt * 1000).toLocaleString()}</p>
+                                <p class="text-xs text-gray-500 break-all">Hash: ${asset.hash}</p>
+                            </div>
+                            <div class="space-y-2">
+                                <button class="transfer-btn px-3 py-1 bg-blue-100 text-blue-700 rounded-md text-sm" data-id="${assetId}">Transfer</button>
+                                <button class="update-btn px-3 py-1 bg-gray-100 text-gray-700 rounded-md text-sm" data-id="${assetId}">Update Hash</button>
+                                <button class="delete-btn px-3 py-1 bg-red-100 text-red-700 rounded-md text-sm" data-id="${assetId}">Delete</button>
+                            </div>
+                        </div>
+                    `;
+                    
+                    assetList.appendChild(assetElement);
+                }
+                
+                // Add event listeners to buttons
+                document.querySelectorAll('.transfer-btn').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        transferAssetId.value = this.dataset.id;
+                        transferModal.classList.remove('hidden');
+                    });
+                });
+                
+                document.querySelectorAll('.update-btn').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        // Implement update hash functionality
+                        alert('Update hash functionality will be implemented here');
+                    });
+                });
+                
+                document.querySelectorAll('.delete-btn').forEach(btn => {
+                    btn.addEventListener('click', async function() {
+                        if (confirm('Are you sure you want to delete this asset?')) {
+                            try {
+                                await contract.methods.deleteAsset(this.dataset.id)
+                                    .send({ from: userAccount });
+                                loadUserAssets(); // Reload the list
+                            } catch (error) {
+                                console.error('Error deleting asset:', error);
+                                alert('Error deleting asset: ' + error.message);
+                            }
+                        }
+                    });
+                });
+                
+            } catch (error) {
+                console.error('Error loading assets:', error);
+                assetList.innerHTML = '<p class="text-red-500">Error loading assets</p>';
+            }
+        }
+        
+        // Transfer asset ownership
+        async function transferAsset(event) {
+            event.preventDefault();
+            
+            const assetId = transferAssetId.value;
+            const newOwner = newOwnerAddress.value;
+            
+            try {
+                await contract.methods.transferAsset(assetId, newOwner)
+                    .send({ from: userAccount });
+                
+                transferModal.classList.add('hidden');
+                loadUserAssets(); // Reload the list
+                
+            } catch (error) {
+                console.error('Error transferring asset:', error);
+                alert('Error transferring asset: ' + error.message);
+            }
+        }
+        
+        // Verify asset integrity
+        async function verifyAssetIntegrity(event) {
+            event.preventDefault();
+            
+            const assetId = verifyAssetId.value;
+            const file = verifyFile.files[0];
+            
+            if (!file) {
+                alert('Please select a file to verify');
+                return;
+            }
+            
+            try {
+                // Calculate hash of the uploaded file
+                const hash = await calculateFileHash(file);
+                
+                // Call the smart contract to verify
+                const isValid = await contract.methods.verifyAssetIntegrity(assetId, hash).call();
+                
+                if (isValid) {
+                    verificationResult.textContent = 'Verification successful! The file matches the registered asset.';
+                    verificationResult.classList.remove('hidden', 'bg-red-100', 'text-red-700');
+                    verificationResult.classList.add('bg-green-100', 'text-green-700');
+                } else {
+                    verificationResult.textContent = 'Verification failed! The file does not match the registered asset.';
+                    verificationResult.classList.remove('hidden', 'bg-green-100', 'text-green-700');
+                    verificationResult.classList.add('bg-red-100', 'text-red-700');
+                }
+                
+            } catch (error) {
+                console.error('Error verifying asset:', error);
+                verificationResult.textContent = 'Error verifying asset: ' + error.message;
+                verificationResult.classList.remove('hidden', 'bg-green-100', 'text-green-700');
+                verificationResult.classList.add('bg-red-100', 'text-red-700');
+            }
+        }
+        
+        // Event Listeners
+        connectWalletBtn.addEventListener('click', connectWallet);
+        
+        registerTab.addEventListener('click', function() {
+            registerTab.classList.add('text-blue-500', 'border-blue-500');
+            manageTab.classList.remove('text-blue-500', 'border-blue-500');
+            verifyTab.classList.remove('text-blue-500', 'border-blue-500');
+            
+            registerSection.classList.remove('hidden');
+            manageSection.classList.add('hidden');
+            verifySection.classList.add('hidden');
+        });
+        
+        manageTab.addEventListener('click', function() {
+            registerTab.classList.remove('text-blue-500', 'border-blue-500');
+            manageTab.classList.add('text-blue-500', 'border-blue-500');
+            verifyTab.classList.remove('text-blue-500', 'border-blue-500');
+            
+            registerSection.classList.add('hidden');
+            manageSection.classList.remove('hidden');
+            verifySection.classList.add('hidden');
+            
+            loadUserAssets();
+        });
+        
+        verifyTab.addEventListener('click', function() {
+            registerTab.classList.remove('text-blue-500', 'border-blue-500');
+            manageTab.classList.remove('text-blue-500', 'border-blue-500');
+            verifyTab.classList.add('text-blue-500', 'border-blue-500');
+            
+            registerSection.classList.add('hidden');
+            manageSection.classList.add('hidden');
+            verifySection.classList.remove('hidden');
+        });
+        
+        assetFile.addEventListener('change', async function() {
+            if (this.files.length > 0) {
+                try {
+                    const hash = await calculateFileHash(this.files[0]);
+                    hashValue.textContent = hash;
+                    fileHash.classList.remove('hidden');
+                } catch (error) {
+                    console.error('Error calculating hash:', error);
+                }
+            } else {
+                fileHash.classList.add('hidden');
+            }
+        });
+        
+        registerForm.addEventListener('submit', registerAsset);
+        transferForm.addEventListener('submit', transferAsset);
+        cancelTransfer.addEventListener('click', function() {
+            transferModal.classList.add('hidden');
+        });
+        verifyForm.addEventListener('submit', verifyAssetIntegrity);
+    </script>
+</body>
+</html>
